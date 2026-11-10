@@ -1,8 +1,10 @@
 import type { Metadata } from "next"
+import { Activity } from "lucide-react"
 import Link from "next/link"
 import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
+import { NavLinks } from "@/components/nav-links"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Toaster } from "@/components/ui/sonner"
@@ -29,23 +31,21 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <header className="border-b">
-            <nav className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
-              <Link href="/" className="font-semibold">
-                HospiAI
+          <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+            <nav className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
+              <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+                <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Activity className="size-4" />
+                </span>
+                <span className="hidden sm:inline">HospiAI</span>
               </Link>
-              <Link href="/doctor" className="text-sm text-muted-foreground hover:text-foreground">
-                Doctor
-              </Link>
-              <Link href="/staff" className="text-sm text-muted-foreground hover:text-foreground">
-                Staff
-              </Link>
+              <NavLinks />
               <div className="ml-auto">
                 <ThemeToggle />
               </div>
             </nav>
           </header>
-          <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+          <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">{children}</main>
           <Toaster />
         </ThemeProvider>
       </body>

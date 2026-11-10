@@ -1,3 +1,5 @@
+import { Inbox } from "lucide-react"
+
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { ActionRow, ActionStatus } from "@/lib/types"
@@ -46,7 +48,10 @@ export function QueueTabs({ actions }: { actions: ActionRow[] }) {
         return (
           <TabsContent key={tab.value} value={tab.value} className="space-y-4 pt-4">
             {items.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">{tab.empty}</p>
+              <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed py-14 text-center text-sm text-muted-foreground">
+                <Inbox className="size-8 text-muted-foreground/60" />
+                {tab.empty}
+              </div>
             ) : (
               items.map((action) => <ActionCard key={action.id} action={action} />)
             )}

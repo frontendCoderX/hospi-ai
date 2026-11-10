@@ -1,9 +1,11 @@
 "use client"
 
+import { Check, CircleCheck, Flag, MapPin, Save } from "lucide-react"
 import { useState, useTransition } from "react"
 import { toast } from "sonner"
 
 import { executeAction, flagForDoctor, saveEdits, type Result } from "@/app/staff/actions"
+import { ACTION_TYPE_STYLES, ActionTypeBadge } from "@/components/action-type-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ACTION_TYPE_LABELS, fieldLabel } from "@/lib/labels"
+import { fieldLabel } from "@/lib/labels"
 import type { ActionRow } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -39,8 +41,13 @@ function toFields(payload: ActionRow["ai_payload"]): Fields {
   return fields
 }
 
+// "Robert Chen" → "RC"
+function initials(name: string | null | undefined) {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean)
+  return parts.length ? parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("") : "?"
+}
+
 export function ActionCard({ action }: { action: ActionRow }) {
- 
   const aiFields = toFields(action.ai_payload)
   const editedFields = action.edited_payload ? toFields(action.edited_payload) : aiFields
   const saved: Fields = Object.fromEntries(
@@ -83,25 +90,43 @@ export function ActionCard({ action }: { action: ActionRow }) {
   }
 
   return (
-    <Card>
+    <Card className={cn("border-l-4", ACTION_TYPE_STYLES[action.action_type].accent)}>
       <CardHeader>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{ACTION_TYPE_LABELS[action.action_type]}</Badge>
-          <CardTitle>{patientName}</CardTitle>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+            {initials(fields.patient_name)}
+          </div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="truncate">{patientName}</CardTitle>
+              <ActionTypeBadge type={action.action_type} />
+            </div>
+            <CardDescription className="flex items-center gap-1">
+              <MapPin className="size-3.5" />
+              {hospital}
+            </CardDescription>
+          </div>
         </div>
-        <CardDescription>{hospital}</CardDescription>
-        {!readOnly && (stillMissing.length > 0 || toVerify.length > 0) && (
-          <CardAction className="flex flex-wrap justify-end gap-1">
-            {stillMissing.length > 0 && (
-              <Badge variant="destructive">{stillMissing.length} missing</Badge>
-            )}
-            {toVerify.length > 0 && (
-              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                {toVerify.length} to verify
-              </Badge>
-            )}
-          </CardAction>
-        )}
+        <CardAction className="flex flex-wrap justify-end gap-1">
+          {action.status === "completed" && (
+            <Badge className="gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <CircleCheck /> Approved
+            </Badge>
+          )}
+          {action.status === "flagged" && (
+            <Badge variant="outline" className="gap-1">
+              <Flag /> Waiting on doctor
+            </Badge>
+          )}
+          {!readOnly && stillMissing.length > 0 && (
+            <Badge variant="destructive">{stillMissing.length} missing</Badge>
+          )}
+          {!readOnly && toVerify.length > 0 && (
+            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              {toVerify.length} to verify
+            </Badge>
+          )}
+        </CardAction>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -167,21 +192,21 @@ export function ActionCard({ action }: { action: ActionRow }) {
       </CardContent>
 
       {!readOnly && (
-        <CardFooter className="flex flex-wrap items-center gap-2">
+        <CardFooter className="flex flex-wrap items-center gap-2 border-t bg-muted/40">
           <Button
             disabled={isPending || stillMissing.length > 0}
             onClick={() =>
               run(() => executeAction({ id: action.id, fields }), { toastOnSuccess: false })
             }
           >
-            Approve
+            <Check /> Approve
           </Button>
           <Button
             variant="secondary"
             disabled={isPending || !isDirty}
             onClick={() => run(() => saveEdits({ id: action.id, fields }))}
           >
-            Save Edits
+            <Save /> Save Edits
           </Button>
           {action.status === "pending" && (
             <Button
@@ -189,7 +214,7 @@ export function ActionCard({ action }: { action: ActionRow }) {
               disabled={isPending}
               onClick={() => run(() => flagForDoctor(action.id))}
             >
-              Flag for Doctor
+              <Flag /> Flag for Doctor
             </Button>
           )}
           {stillMissing.length > 0 && (

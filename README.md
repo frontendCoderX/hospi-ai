@@ -14,17 +14,24 @@ it is approved**. The AI proposes; a human decides.
 ## What it does
 
 **`/doctor`: Doctor's Command Center**
+- Two tabs: **Notes** (the chat) and **Census**. The Census tab shows a red count when tasks are
+  waiting for staff.
 - A chat box for plain-English notes. One note can create several tasks
   (discharge + billing).
+  - **Dictation**: the mic button uses the browser's built-in speech-to-text (Web Speech API).
+    Words appear in the box as you speak.
+  - **Example notes** type themselves out in the empty input box. Press **Tab** to use the one
+    shown (on devices with a keyboard; phones get a plain placeholder).
 - The same box answers questions ("How many patients do I currently have at Mercy?") **from the
   database**. Each reply is labelled *Action → staff queue* or *Query → read from database*.
-- A daily census card: active patients by hospital, discharges, pending tasks, and tasks staff sent
+- The Census tab: active patients by hospital, discharges, pending tasks, and tasks staff sent
   back ("Needs your input").
 
 **`/staff`: Staff Action Queue (human in the loop)**
 - Tabs: **Pending Review**, **Approved**, **Needs Doctor Clarification**. New tasks appear within
   ~2 seconds (the page polls the server).
-- Each task is an **editable form**, not raw JSON.
+- Each task is an **editable form**, not raw JSON, colour-coded by type (Billing, EMR Sync,
+  Patient Comms).
   - 🔴 **Red**: a required field the doctor didn't mention (e.g. insurance). **Blocks Approve**,
     in the browser *and* on the server.
   - 🟡 **Yellow**: a value that isn't in the doctor's words, so the AI inferred it
@@ -36,12 +43,16 @@ it is approved**. The AI proposes; a human decides.
 - **Approve** (marks the task completed and, for status changes, updates the patient record),
   **Save Edits**, **Flag for Doctor**.
 
+Both pages show a loading skeleton straight away while the server fetches data, and there's a
+light/dark theme toggle.
+
 ## Tech stack
 
 | | |
 |---|---|
 | App | Next.js 16 (App Router), React 19, TypeScript |
 | UI | shadcn/ui (Radix), Tailwind CSS v4, Lucide icons |
+| Dictation | Browser Web Speech API (no extra service or key) |
 | AI | Vercel AI SDK v7 (`ai`, `@ai-sdk/react`) + OpenAI (`@ai-sdk/openai`), tool calling, streaming |
 | Database | Supabase (Postgres) via `@supabase/supabase-js`, **server-side only** |
 | Validation | zod |
@@ -81,17 +92,19 @@ node scripts/test-chat.mjs "Discharged Jane Doe from Mercy, bill a level 3"
 
 Open `/doctor` and `/staff` side by side after running the seed.
 
-1. On `/doctor`: **"Discharged Jane Doe from Mercy, bill a level 3"** → 2 tasks queued.
+1. On `/doctor`: **"Discharged Jane Doe from Mercy, bill a level 3"** → 2 tasks queued. Type it,
+   press **Tab** when the example shows, or dictate it with the mic.
 2. Within ~2 seconds the cards appear on `/staff`. The billing card has a **red** insurance field
    (Approve is blocked) and a
    **yellow** billing code (AI inferred 99213 from "level 3"). Hover the fields to see the source
    words.
 3. Fill in the insurance, correct the code → *"AI said: 99213"* appears → **Approve** → the card
-   moves to the Approved tab. Approve the discharge → Jane moves to discharges on `/doctor`.
+   moves to the Approved tab. Approve the discharge → Jane moves to discharges in the Census tab on `/doctor`.
 4. **"Admitted John Smith to Mercy"** → then ask **"How many patients do I currently have at
    Mercy?"** The AI switches from writing a task to reading the database, and says pending tasks
    aren't counted. Approve John's card, ask again → the count goes up.
-5. **Flag for Doctor** on any card → it appears under *"Needs your input"* on `/doctor`.
+5. **Flag for Doctor** on any card → it appears under *"Needs your input"* in the Census tab on
+   `/doctor`.
 
 ---
 
@@ -134,6 +147,9 @@ Staff reviews on /staff
   Google Sheets, Salesforce or an EMR is the next step (see below).
 - **Billing codes are inferred by the AI**, and therefore flagged yellow for a human. Real billing
   rules change often and belong in versioned code/config, not in a prompt.
+- **Dictation is browser speech-to-text.** In Chrome the audio is processed by Google's servers,
+  which is fine for a demo but not for real patient notes. Firefox doesn't support it (the mic is
+  disabled there). The microphone only works on `localhost` or HTTPS.
 - **Hospital-name matching is plain text.** "lukes" doesn't match "St. Luke's".
 - One doctor, no clinics or schedules. No automated tests.
 
