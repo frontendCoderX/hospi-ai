@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.99",
+    "@ai-sdk/openai": "^4.0.111",
     "@ai-sdk/react": "^4.0.170",
     "@supabase/supabase-js": "^2.119.0",
     "ai": "^7.0.166",

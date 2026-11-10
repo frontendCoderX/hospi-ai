@@ -20,17 +20,20 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ACTION_TYPE_LABELS, fieldLabel } from "@/lib/labels"
 import type { ActionRow } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 import { SourceTranscript } from "./source-transcript"
 
 type Fields = Record<string, string | null>
+
+const BOOKKEEPING_KEYS = new Set(["missing_fields", "inferred_fields"])
 
 // Turn the AI payload into plain text fields for the form (patient name first).
 function toFields(payload: ActionRow["ai_payload"]): Fields {
   const fields: Fields = {}
   if ("patient_name" in payload) fields.patient_name = String(payload.patient_name ?? "")
   for (const [key, value] of Object.entries(payload)) {
-    if (key === "missing_fields" || key in fields) continue
+    if (BOOKKEEPING_KEYS.has(key) || key in fields) continue
     fields[key] = value == null ? null : String(value)
   }
   return fields
@@ -39,10 +42,18 @@ function toFields(payload: ActionRow["ai_payload"]): Fields {
 export function ActionCard({ action }: { action: ActionRow }) {
   const original = toFields(action.ai_payload)
   const [fields, setFields] = useState<Fields>(original)
+  const [activeField, setActiveField] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  const flagged = new Set(action.ai_payload.missing_fields ?? [])
-  const stillMissing = [...flagged].filter((key) => !fields[key]?.trim())
+  // Red: required but the doctor didn't say it. Blocks Execute until filled.
+  const stillMissing = (action.ai_payload.missing_fields ?? []).filter(
+    (key) => !fields[key]?.trim()
+  )
+  // Yellow: the AI inferred it (not in the doctor's words). Clears once staff changes it.
+  const toVerify = (action.ai_payload.inferred_fields ?? []).filter(
+    (key) => fields[key] === original[key] && !stillMissing.includes(key)
+  )
+
   const isDirty = JSON.stringify(fields) !== JSON.stringify(original)
   const readOnly = action.status === "completed"
 
@@ -74,11 +85,16 @@ export function ActionCard({ action }: { action: ActionRow }) {
           <CardTitle>{patientName}</CardTitle>
         </div>
         <CardDescription>{hospital}</CardDescription>
-        {stillMissing.length > 0 && !readOnly && (
-          <CardAction>
-            <Badge variant="destructive">
-              {stillMissing.length} field{stillMissing.length > 1 ? "s" : ""} need attention
-            </Badge>
+        {!readOnly && (stillMissing.length > 0 || toVerify.length > 0) && (
+          <CardAction className="flex flex-wrap justify-end gap-1">
+            {stillMissing.length > 0 && (
+              <Badge variant="destructive">{stillMissing.length} missing</Badge>
+            )}
+            {toVerify.length > 0 && (
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                {toVerify.length} to verify
+              </Badge>
+            )}
           </CardAction>
         )}
       </CardHeader>
@@ -87,6 +103,7 @@ export function ActionCard({ action }: { action: ActionRow }) {
         <div className="grid gap-3 sm:grid-cols-2">
           {Object.entries(fields).map(([key, value]) => {
             const isMissing = stillMissing.includes(key)
+            const isInferred = toVerify.includes(key)
             const isLong = key === "message"
             const inputProps = {
               id: `${action.id}-${key}`,
@@ -94,9 +111,21 @@ export function ActionCard({ action }: { action: ActionRow }) {
               disabled: readOnly || isPending,
               "aria-invalid": isMissing || undefined,
               placeholder: isMissing ? "Required" : undefined,
+              className: cn(
+                isInferred &&
+                  "border-amber-500 bg-amber-50 focus-visible:border-amber-500 focus-visible:ring-amber-500/30 dark:bg-amber-950/30"
+              ),
             }
             return (
-              <div key={key} className={isLong ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}>
+              <div
+                key={key}
+                className={isLong ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"}
+                // Hover or focus a field to see where it came from in the transcript.
+                onMouseEnter={() => setActiveField(key)}
+                onMouseLeave={() => setActiveField(null)}
+                onFocus={() => setActiveField(key)}
+                onBlur={() => setActiveField(null)}
+              >
                 <Label htmlFor={inputProps.id}>{fieldLabel(key)}</Label>
                 {isLong ? (
                   <Textarea {...inputProps} onChange={(e) => setField(key, e.target.value)} />
@@ -108,12 +137,22 @@ export function ActionCard({ action }: { action: ActionRow }) {
                     The doctor didn&apos;t mention this. Please fill it in.
                   </p>
                 )}
+                {isInferred && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    Not in the doctor&apos;s words. The AI inferred this, so please verify.
+                  </p>
+                )}
               </div>
             )
           })}
         </div>
 
-        <SourceTranscript transcript={action.raw_transcript} extractedValues={extractedValues} />
+        <SourceTranscript
+          transcript={action.raw_transcript}
+          extractedValues={extractedValues}
+          activeValue={activeField ? original[activeField] : null}
+          inferred={toVerify.map((key) => ({ key, value: original[key] ?? "" }))}
+        />
       </CardContent>
 
       {!readOnly && (
