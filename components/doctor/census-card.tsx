@@ -88,7 +88,7 @@ export function CensusCard({ patients, actions }: { patients: Patient[]; actions
                 {flagged.map((a) => (
                   <li key={a.id}>
                     {ACTION_TYPE_LABELS[a.action_type]} ·{" "}
-                    {String(a.ai_payload.patient_name ?? "Unknown patient")}
+                    {String((a.edited_payload ?? a.ai_payload).patient_name ?? "Unknown patient")}
                   </li>
                 ))}
               </ul>

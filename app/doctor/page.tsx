@@ -13,7 +13,7 @@ export default async function DoctorPage() {
       <div>
         <h1 className="text-xl font-semibold">Doctor&apos;s Command Center</h1>
         <p className="text-sm text-muted-foreground">
-          Dump your notes between rounds. Staff verifies everything before it syncs.
+          Dump your notes between rounds. Staff verifies everything before it counts.
         </p>
       </div>
 

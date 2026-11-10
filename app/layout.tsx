@@ -4,6 +4,7 @@ import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
@@ -39,6 +40,9 @@ export default function RootLayout({
               <Link href="/staff" className="text-sm text-muted-foreground hover:text-foreground">
                 Staff
               </Link>
+              <div className="ml-auto">
+                <ThemeToggle />
+              </div>
             </nav>
           </header>
           <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>

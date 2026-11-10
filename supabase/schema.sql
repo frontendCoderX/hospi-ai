@@ -11,7 +11,8 @@ create table action_queue (
   action_type     text not null,           -- 'billing' | 'emr_update' | 'patient_comms'
   patient_id      uuid references patients(id),
   raw_transcript  text not null,
-  ai_payload      jsonb not null,
+  ai_payload      jsonb not null,          -- what the AI extracted; never changed after insert (audit trail)
+  edited_payload  jsonb,                   -- staff's corrected version; null until staff saves or executes
   status          text not null default 'pending',   -- 'pending' | 'completed' | 'flagged'
   confidence_flag boolean not null default false
 );

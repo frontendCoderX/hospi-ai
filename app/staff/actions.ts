@@ -23,7 +23,6 @@ async function loadAction(id: string) {
   return data as ActionRow | null
 }
 
-// A field stays "missing" until the staff fills it in, and "inferred" until the staff changes it.
 function buildPayload(action: ActionRow, fields: Fields) {
   const clean = { ...fields }
   delete clean.missing_fields // the server decides these lists, not the browser
@@ -48,12 +47,12 @@ export async function saveEdits(input: unknown): Promise<Result> {
 
   const action = await loadAction(id)
   if (!action) return { ok: false, message: "Task not found." }
-  if (action.status === "completed") return { ok: false, message: "This task is already synced." }
+  if (action.status === "completed") return { ok: false, message: "This task is already approved." }
 
   const { payload, missing, inferred } = buildPayload(action, fields)
   const { error } = await supabase
     .from("action_queue")
-    .update({ ai_payload: payload, confidence_flag: missing.length > 0 || inferred.length > 0 })
+    .update({ edited_payload: payload, confidence_flag: missing.length > 0 || inferred.length > 0 })
     .eq("id", id)
   if (error) return { ok: false, message: error.message }
 
@@ -68,7 +67,7 @@ export async function executeAction(input: unknown): Promise<Result> {
 
   const action = await loadAction(id)
   if (!action) return { ok: false, message: "Task not found." }
-  if (action.status === "completed") return { ok: false, message: "This task is already synced." }
+  if (action.status === "completed") return { ok: false, message: "This task is already approved." }
 
   // The server enforces the rule too, not just the disabled button.
   const { clean, payload, missing } = buildPayload(action, fields)
@@ -83,13 +82,10 @@ export async function executeAction(input: unknown): Promise<Result> {
     patientId = result.patientId
   }
 
-  // Pretend to call Epic / Salesforce.
-  await new Promise((resolve) => setTimeout(resolve, 700))
-
   const { error } = await supabase
     .from("action_queue")
     .update({
-      ai_payload: payload,
+      edited_payload: payload,
       confidence_flag: false,
       status: "completed",
       patient_id: patientId,
@@ -98,8 +94,7 @@ export async function executeAction(input: unknown): Promise<Result> {
   if (error) return { ok: false, message: error.message }
 
   refresh()
-  const system = action.action_type === "billing" ? "Salesforce" : "Epic"
-  return { ok: true, message: `Successfully synced to ${system}.` }
+  return { ok: true, message: "Approved." }
 }
 
 export async function flagForDoctor(id: unknown): Promise<Result> {

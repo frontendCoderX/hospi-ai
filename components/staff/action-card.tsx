@@ -40,37 +40,42 @@ function toFields(payload: ActionRow["ai_payload"]): Fields {
 }
 
 export function ActionCard({ action }: { action: ActionRow }) {
-  const original = toFields(action.ai_payload)
-  const [fields, setFields] = useState<Fields>(original)
+ 
+  const aiFields = toFields(action.ai_payload)
+  const editedFields = action.edited_payload ? toFields(action.edited_payload) : aiFields
+  const saved: Fields = Object.fromEntries(
+    Object.keys(aiFields).map((key) => [key, editedFields[key] ?? null])
+  )
+
+  const [fields, setFields] = useState<Fields>(saved)
   const [activeField, setActiveField] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  // Red: required but the doctor didn't say it. Blocks Execute until filled.
   const stillMissing = (action.ai_payload.missing_fields ?? []).filter(
     (key) => !fields[key]?.trim()
   )
   // Yellow: the AI inferred it (not in the doctor's words). Clears once staff changes it.
   const toVerify = (action.ai_payload.inferred_fields ?? []).filter(
-    (key) => fields[key] === original[key] && !stillMissing.includes(key)
+    (key) => fields[key] === aiFields[key] && !stillMissing.includes(key)
   )
 
-  const isDirty = JSON.stringify(fields) !== JSON.stringify(original)
+  const isDirty = JSON.stringify(fields) !== JSON.stringify(saved)
   const readOnly = action.status === "completed"
 
   const patientName = fields.patient_name || "Unknown patient"
   const hospital = fields.hospital ?? fields.location ?? "No location"
-  const extractedValues = Object.values(original).filter((v): v is string => !!v)
+  const extractedValues = Object.values(aiFields).filter((v): v is string => !!v)
 
   function setField(key: string, value: string) {
     setFields((prev) => ({ ...prev, [key]: value === "" ? null : value }))
   }
 
-  function run(task: () => Promise<Result>) {
+  function run(task: () => Promise<Result>, { toastOnSuccess = true } = {}) {
     startTransition(async () => {
       try {
         const result = await task()
-        if (result.ok) toast.success(result.message)
-        else toast.error(result.message)
+        if (!result.ok) toast.error(result.message)
+        else if (toastOnSuccess) toast.success(result.message)
       } catch {
         toast.error("Something went wrong. Please try again.")
       }
@@ -142,6 +147,12 @@ export function ActionCard({ action }: { action: ActionRow }) {
                     Not in the doctor&apos;s words. The AI inferred this, so please verify.
                   </p>
                 )}
+                {(value ?? null) !== (aiFields[key] ?? null) && !isMissing && (
+                  <p className="text-xs text-muted-foreground">
+                    Edited by staff · AI said:{" "}
+                    <span className="font-mono">{aiFields[key] ?? "nothing"}</span>
+                  </p>
+                )}
               </div>
             )
           })}
@@ -150,8 +161,8 @@ export function ActionCard({ action }: { action: ActionRow }) {
         <SourceTranscript
           transcript={action.raw_transcript}
           extractedValues={extractedValues}
-          activeValue={activeField ? original[activeField] : null}
-          inferred={toVerify.map((key) => ({ key, value: original[key] ?? "" }))}
+          activeValue={activeField ? aiFields[activeField] : null}
+          inferred={toVerify.map((key) => ({ key, value: aiFields[key] ?? "" }))}
         />
       </CardContent>
 
@@ -159,9 +170,11 @@ export function ActionCard({ action }: { action: ActionRow }) {
         <CardFooter className="flex flex-wrap items-center gap-2">
           <Button
             disabled={isPending || stillMissing.length > 0}
-            onClick={() => run(() => executeAction({ id: action.id, fields }))}
+            onClick={() =>
+              run(() => executeAction({ id: action.id, fields }), { toastOnSuccess: false })
+            }
           >
-            Execute &amp; Sync
+            Approve
           </Button>
           <Button
             variant="secondary"
@@ -181,7 +194,7 @@ export function ActionCard({ action }: { action: ActionRow }) {
           )}
           {stillMissing.length > 0 && (
             <p className="w-full text-xs text-muted-foreground">
-              Fill in {stillMissing.map(fieldLabel).join(", ")} to enable Execute.
+              Fill in {stillMissing.map(fieldLabel).join(", ")} to enable Approve.
             </p>
           )}
         </CardFooter>

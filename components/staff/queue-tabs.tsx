@@ -4,21 +4,33 @@ import type { ActionRow, ActionStatus } from "@/lib/types"
 
 import { ActionCard } from "./action-card"
 
-const TABS: { value: ActionStatus; label: string; empty: string }[] = [
-  { value: "pending", label: "Pending Review", empty: "Inbox zero. Nothing waiting for review." },
-  { value: "completed", label: "Approved / Synced", empty: "Nothing synced yet." },
-  { value: "flagged", label: "Needs Doctor Clarification", empty: "Nothing flagged." },
+// `short` is shown on phones so all three tabs fit in one row.
+const TABS: { value: ActionStatus; label: string; short: string; empty: string }[] = [
+  {
+    value: "pending",
+    label: "Pending Review",
+    short: "Pending",
+    empty: "Inbox zero. Nothing waiting for review.",
+  },
+  { value: "completed", label: "Approved", short: "Approved", empty: "Nothing approved yet." },
+  {
+    value: "flagged",
+    label: "Needs Doctor Clarification",
+    short: "Needs info",
+    empty: "Nothing flagged.",
+  },
 ]
 
 export function QueueTabs({ actions }: { actions: ActionRow[] }) {
   return (
     <Tabs defaultValue="pending">
-      <TabsList className="h-auto flex-wrap">
+      <TabsList className="w-full group-data-horizontal/tabs:h-9 sm:w-fit">
         {TABS.map((tab) => {
           const count = actions.filter((a) => a.status === tab.value).length
           return (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
+            <TabsTrigger key={tab.value} value={tab.value} className="px-2 text-xs sm:text-sm">
+              <span className="sm:hidden">{tab.short}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
               {tab.value === "pending" && count > 0 ? (
                 <Badge className="bg-destructive text-white">{count}</Badge>
               ) : (

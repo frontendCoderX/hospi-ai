@@ -8,16 +8,19 @@ export type Patient = {
 export type ActionType = "billing" | "emr_update" | "patient_comms"
 export type ActionStatus = "pending" | "completed" | "flagged"
 
+export type Payload = Record<string, unknown> & {
+  missing_fields?: string[] // required but not mentioned → red
+  inferred_fields?: string[] // not in the doctor's words, AI inferred it → yellow
+}
+
 export type ActionRow = {
   id: string
   created_at: string
   action_type: ActionType
   patient_id: string | null
   raw_transcript: string
-  ai_payload: Record<string, unknown> & {
-    missing_fields?: string[] // required but not mentioned → red
-    inferred_fields?: string[] // not in the doctor's words, AI inferred it → yellow
-  }
+  ai_payload: Payload // what the AI extracted; never changed after insert
+  edited_payload: Payload | null // staff's corrected version; null until staff saves
   status: ActionStatus
   confidence_flag: boolean
 }

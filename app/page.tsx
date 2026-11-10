@@ -20,7 +20,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle>Staff Action Queue</CardTitle>
             <CardDescription>
-              Review, correct and approve AI-generated tasks before they sync.
+              Review, correct and approve AI-generated tasks.
             </CardDescription>
           </CardHeader>
         </Card>
