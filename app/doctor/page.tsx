@@ -1,16 +1,10 @@
 import { connection } from "next/server"
 
-import { supabase } from "@/lib/supabase"
-import type { Patient } from "@/lib/types"
+import { getPatients } from "@/lib/queries"
 
 export default async function DoctorPage() {
   await connection() // always load fresh data, never at build time
-
-  const { data, error } = await supabase.from("patients").select("*").order("name")
-
-  if (error) return <p className="text-destructive">Database error: {error.message}</p>
-
-  const patients = data as Patient[]
+  const patients = await getPatients()
 
   return (
     <div className="space-y-4">
